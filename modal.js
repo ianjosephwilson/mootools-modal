@@ -1,4 +1,8 @@
 /*
+Copyright (c) 2010, Ian Wilson
+
+SEE LICENSE for the licensing information.
+
 This modal is very simplistic and provides to help for specific types of
 content.
 
@@ -11,7 +15,9 @@ Ajax
   on success call the loadContent method.
 
 Images
-  - In order to emulate lightbox you one will need to 
+  - In order to emulate lightbox a modal instance should be created and the
+  loadContent method should be called when thumbnails are clicked.
+
 */
 (function () {
     var Modal = new Class({
@@ -38,6 +44,9 @@ Images
             panelYOffset: 0
         },
         initialize: function (options) {
+            /* Initialize the modal's properties and options.
+
+            Must be called before attach. */
             var bind = this;
             this.setOptions(options);
             this.panelEl = null;
@@ -60,19 +69,23 @@ Images
             };
         },
         attach: function () {
-            /* Attach to the dom. */
+            /* Attach the modal to DOM.
+
+            Must be called before loadContent. */
             var panelParentEl = $(document.body);
             this.overlayEl = this.buildOverlay();
             this.panelEl = this.buildPanel();
             panelParentEl.adopt([this.overlayEl, this.panelEl]);
         },
         destroy: function () {
+            /* Destroy this modal, it cannot be used again. */
             this.hide();
             this.detachEvents();
             this.overlayEl.destroy();
             this.panelEl.destroy();
         },
         buildOverlay: function () {
+            /* Build the overlay element and set styles. */
             var overlayEl = new Element('div');
             overlayEl.setStyles({
                 zIndex: this.options.overlayZIndex,
@@ -88,6 +101,7 @@ Images
             return overlayEl;
         },
         buildPanel: function () {
+            /* Build the panel element and set styles. */
             var panelEl = new Element('div');
             panelEl.setStyles({
                 zIndex: this.options.panelZIndex,
@@ -102,6 +116,7 @@ Images
             return panelEl;
         },
         loadContent: function (contentEl, contentOptions) {
+            /* Load content into the modal.  The size must be provided. */
             // TODO: We do this in hide, now quite sure we need this.
             this.panelEl.empty();
             this.panelEl.adopt(contentEl);
@@ -111,6 +126,7 @@ Images
             }
         },
         loadContentAutoSize: function (contentEl, contentOptions) {
+            /* Load content into the modal.  The size will be guessed. */
             var imageUrls, onComplete, dimensions;
             imageUrls = contentEl.getElements('img').map(
                 function (imageEl) {
@@ -156,18 +172,21 @@ Images
             }
         },
         attachEvents: function () {
+            /* Attach events for modal to function. */
             var panelParentEl = $(document.body);
             panelParentEl.addEvents(this.panelParentEvents);
             this.overlayEl.addEvents(this.overlayEvents);
             window.addEvents(this.windowEvents);
         },
         detachEvents: function () {
+            /* Detach events for modal to function. */
             var panelParentEl = $(document.body);
             this.overlayEl.removeEvents(this.overlayEvents);
             panelParentEl.removeEvents(this.panelParentEvents);
             window.removeEvents(this.windowEvents);
         },
         show: function () {
+            /* Make the modal visible. */
             var panelParentEl;
             this.showing = true;
             this.attachEvents();
@@ -182,6 +201,7 @@ Images
             this.fireEvent('panelShown');
         },
         hide: function () {
+            /* Hide the modal so it is not visible. */
             this.showing = false;
             this.contentOptions = null;
             this.detachEvents();
@@ -191,19 +211,8 @@ Images
             this.panelEl.empty();
             this.fireEvent('panelHidden');
         },
-        panelParentKeydown: function (e) {
-            if (e.key === 'esc') {
-                if (this.showing) {
-                    this.hide();
-                }
-            }
-        },
-        overlayClick: function (e) {
-            if (this.showing) {
-                this.hide();
-            }
-        },
         getPanelWidth: function () {
+            /* Get the panel width from contentOptions and options. */
             if (this.contentOptions !== null &&
                     this.contentOptions.hasOwnProperty('panelWidth')) {
                 return this.contentOptions.panelWidth;
@@ -212,6 +221,7 @@ Images
             }
         },
         getPanelHeight: function () {
+            /* Get the panel height from contentOptions and options. */
             if (this.contentOptions !== null &&
                     this.contentOptions.hasOwnProperty('panelHeight')) {
                 return this.contentOptions.panelHeight;
@@ -220,6 +230,7 @@ Images
             }
         },
         getPanelXOffset: function () {
+            /* Get the panel x offset from contentOptions and options. */
             if (this.contentOptions !== null &&
                     this.contentOptions.hasOwnProperty('panelXOffset')) {
                 return this.contentOptions.panelXOffset;
@@ -228,6 +239,7 @@ Images
             }
         },
         getPanelYOffset: function () {
+            /* Get the panel y offset from contentOptions and options. */
             if (this.contentOptions !== null &&
                     this.contentOptions.hasOwnProperty('panelYOffset')) {
                 return this.contentOptions.panelYOffset;
@@ -236,6 +248,7 @@ Images
             }
         },
         getOverlayCoords: function () {
+            /* Get the coordinates for the overlay element. */
             var windowScrollSize, overlayCoords;
             windowScrollSize = window.getScrollSize();
             // Reposition and resize the overlay.
@@ -248,6 +261,7 @@ Images
             return overlayCoords;
         },
         getPanelCoords: function () {
+            /* Get the coordinates for the panel element. */
             var windowSize, panelXMargin, panelYMargin, panelWidth,
                     panelHeight, panelCoords, panelXOffset, panelYOffset,
                     windowScroll;
@@ -279,15 +293,39 @@ Images
             };
             return panelCoords;
         },
+        panelParentKeydown: function (e) {
+            /* Handles key events in the panel parent.
+
+            Close the modal when esc is pressed. */
+            if (e.key === 'esc') {
+                if (this.showing) {
+                    this.hide();
+                }
+            }
+        },
+        overlayClick: function (e) {
+            /* Handles a click on the overlay element. 
+
+            Clicking on overlay should close the modal. */
+            if (this.showing) {
+                this.hide();
+            }
+        },
         windowResize: function (e) {
-            /* When the user resizes the window. */
+            /* Handles window resize.
+
+            Positions and sizes the overlay and panel.
+            */
             if (this.showing) {
                 this.overlayEl.setStyles(this.getOverlayCoords());
                 this.panelEl.setStyles(this.getPanelCoords());
             }
         },
         windowScroll: function (e) {
-            /* When the user scrolls up and down in the window. */
+            /* When the user scrolls up and down in the window.
+
+            Positions the overlay and panel.
+            */
             var targetEl;
             if (this.showing) {
                 // TODO: Find a way to test if incompliant browsers
