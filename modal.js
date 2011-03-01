@@ -61,6 +61,9 @@ Images
                 resize: this.windowResize.bind(this),
                 scroll: this.windowScroll.bind(this)
             };
+            this.ourEvents = {
+                onContentChanged: this.contentChanged.bind(this)
+            };
         },
         attach: function () {
             /* Attach the modal to DOM.
@@ -201,6 +204,7 @@ Images
             panelParentEl.addEvents(this.panelParentEvents);
             this.overlayEl.addEvents(this.overlayEvents);
             window.addEvents(this.windowEvents);
+            this.addEvents(this.ourEvents);
         },
         detachEvents: function () {
             /* Detach events for modal to function. */
@@ -208,6 +212,7 @@ Images
             this.overlayEl.removeEvents(this.overlayEvents);
             panelParentEl.removeEvents(this.panelParentEvents);
             window.removeEvents(this.windowEvents);
+            this.removeEvents(this.ourEvents);
         },
         show: function () {
             /* Make the modal visible. */
@@ -262,7 +267,7 @@ Images
                 height: windowScrollSize.y + 'px'
             };
         },
-        updateContentSize: function (onComplete) {
+        updateContentSize: function (sizeOptions, onComplete) {
             /* Update content size if necessary.
 
             The argument onComplete will be called when the content size
@@ -273,8 +278,22 @@ Images
                 // TODO: We should clean this up.
                 contentCloneEl = this.panelEl.getChildren()[0].clone(true);
                 onSizeComputed = (function (computedSize) {
-                    this.contentOptions.width = computedSize.totalWidth;
-                    this.contentOptions.height = computedSize.totalHeight;
+                    if (sizeOptions.hasOwnProperty('canShrink') &&
+                            sizeOptions.canShrink) {
+                        this.contentOptions.width = computedSize.totalWidth;
+                        this.contentOptions.height = computedSize.totalHeight;
+                    } else {
+                        if (this.contentOptions.width <
+                                computedSize.totalWidth) {
+                            this.contentOptions.width =
+                                    computedSize.totalWidth;
+                        }
+                        if (this.contentOptions.height <
+                                computedSize.totalHeight) {
+                            this.contentOptions.height =
+                                    computedSize.totalHeight;
+                        }
+                    }
                     onComplete();
                 }).bind(this);
                 this.measureContentComputedSize(contentCloneEl,
@@ -365,7 +384,9 @@ Images
                 }).bind(this);
                 if (this.contentOptions.hasOwnProperty('autosize') &&
                     this.contentOptions.autosize) {
-                    this.updateContentSize(onComplete);
+                    this.updateContentSize({
+                        canShrink: true
+                    }, onComplete);
                 } else {
                     onComplete();
                 }
@@ -388,6 +409,30 @@ Images
                 }
                 if (targetEl === null || !this.panelEl.contains(targetEl)) {
                     this.panelEl.setStyles(this.getComputedPanelPosition());
+                }
+            }
+        },
+        contentChanged: function () {
+            /* When the application changes the content of the panel.
+
+            This should not decrease the size, only increase it.
+            */
+            var onComplete, panelStyles;
+            if (this.showing) {
+                onComplete = (function () {
+                    this.recomputePanelDimensions();
+                    this.overlayEl.setStyles(this.getOverlaySize());
+                    panelStyles = Object.merge(this.getComputedPanelSize(),
+                            this.getComputedPanelPosition());
+                    this.panelEl.setStyles(panelStyles);
+                }).bind(this);
+                if (this.contentOptions.hasOwnProperty('autosize') &&
+                    this.contentOptions.autosize) {
+                    this.updateContentSize({
+                        canShrink: false
+                    }, onComplete);
+                } else {
+                    onComplete();
                 }
             }
         }
