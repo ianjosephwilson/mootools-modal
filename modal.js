@@ -31,32 +31,26 @@ Images
             panelWidth: 600,
             panelHeight: 600,
             panelBackgroundColor: '#ffffff',
-            panelCssClass: null,
-            // Space in the width to leave on left/right of panel.
-            // - Note this isn't the sum of left and right but one
-            // side only and will be mirrored.
-            // - Must be integer with implicit pixel units.
-            panelXOffset: 0,
-            // Space in the height to leave on top/bottom of panel.
-            // - Note this isn't the sum of left and right but one
-            // side only and will be mirrored.
-            // - Must be integer with implicit pixel units.
-            panelYOffset: 0
+            panelCssClass: null
         },
         initialize: function (options) {
             /* Initialize the modal's properties and options.
 
             Must be called before attach. */
-            var bind = this;
             this.setOptions(options);
             this.panelEl = null;
             this.overlayEl = null;
             // True if panel and overlay are showing.
             this.showing = false;
+            // Used to detect if 
+            this.newContent = null;
             // True if the user customized the size.
             this.sizeCustomized = false;
-            // These options are only used on one display.
+            // These options are only used for one set of content.
             this.contentOptions = null;
+            // This is the computed size and margin of the panel.
+            this.computedPanelDimensions = null;
+            
             this.panelParentEvents = {
                 keydown: this.panelParentKeydown.bind(this)
             };
@@ -88,6 +82,9 @@ Images
             /* Build the overlay element and set styles. */
             var overlayEl = new Element('div');
             overlayEl.setStyles({
+                display: 'none',
+                top: 0 + 'px',
+                left: 0 + 'px',
                 zIndex: this.options.overlayZIndex,
                 margin: 0,
                 padding: 0,
@@ -104,6 +101,7 @@ Images
             /* Build the panel element and set styles. */
             var panelEl = new Element('div');
             panelEl.setStyles({
+                display: 'none',
                 zIndex: this.options.panelZIndex,
                 margin: 0,
                 padding: 0,
@@ -116,27 +114,53 @@ Images
             return panelEl;
         },
         loadContent: function (contentEl, contentOptions) {
-            /* Load content into the modal.  The size must be provided. */
-            // TODO: We do this in hide, now quite sure we need this.
+            /* Load content into the modal.
+
+            The panel size must be provided either in contentOptions with the
+            panelWidth and panelHeight properties or in the options for this
+            modal instance. Note that contentOptions is not optional and must
+            be at minimum an empty object. */
+            // Make sure we hide the modal before loading new content.
+            if (this.showing) {
+                this.hide();
+            }
+            this.contentOptions = contentOptions;
             this.panelEl.empty();
             this.panelEl.adopt(contentEl);
-            this.contentOptions = contentOptions;
-            if (!this.showing) {
-                this.show();
-            }
+            this.show();
         },
         loadContentAutoSize: function (contentEl, contentOptions) {
-            /* Load content into the modal.  The size will be guessed. */
-            var imageUrls, onComplete, dimensions;
+            /* Try to compute the content size and then load content into the
+            modal.
+
+            This is just a wrapper around loadContent. */
+            var self;
+            // We need this in order to reposition and resize the modal.
+            contentOptions.autosize = true;
+            // Pass modal instance into closure.
+            self = this;
+            function onSizeComputed(computedSize) {
+                contentOptions.panelWidth = computedSize.totalWidth;
+                contentOptions.panelHeight = computedSize.totalHeight;
+                self.loadContent(contentEl, contentOptions);
+            }
+            this.measureContentComputedSize(contentEl, onSizeComputed);
+        },
+        measureContentComputedSize: function (contentEl, onComplete) {
+            /* Measure computed size of contentEl and call onComplete with the
+            size. */
+            var imageUrls;
             imageUrls = contentEl.getElements('img').map(
                 function (imageEl) {
                     return imageEl.get('src');
                 });
-            onComplete = (function () {
+            function onSizeComplete(onComplete) {
                 /* Put the content in a table because it seems to be the only
                 reliable way to measure the width and height with shrink
-                wrapping. */
-                var tdEl, trEl, tbodyEl, tableEl;
+                wrapping. The table is going to add all kinds of margins,
+                padding, and border complications so I would like to use
+                another way. */
+                var tdEl, trEl, tbodyEl, tableEl, computedSize;
                 tdEl = new Element('td').adopt(contentEl);
                 trEl = new Element('tr').adopt(tdEl);
                 tbodyEl = new Element('tbody').adopt(trEl);
@@ -144,31 +168,31 @@ Images
                 
                 // Make sure the table is not shown.
                 tableEl.setStyle('display', 'none');
-                // Some styles might depend on being in a modal, so fake it.
+                // Some styles might depend on being in the modal, so fake it.
                 if (this.options.panelCssClass !== null) {
                     tableEl.addClass(this.options.panelCssClass);
                 }
                 $(document.body).adopt(tableEl);
                 
-                dimensions = tableEl.measure(function () {
-                    return tableEl.getSize();
+                computedSize = tableEl.measure(function () {
+                    return tableEl.getComputedSize({
+                        styles: ['padding', 'border', 'margin']
+                    });
                 });
                 [tdEl, trEl, tbodyEl, tableEl].each(function (el) {
                     el.dispose();
                 });
-                contentOptions.panelWidth = dimensions.x;//width;
-                contentOptions.panelHeight = dimensions.y;//height;
-                this.loadContent(contentEl, contentOptions);
-            }).bind(this);
+                onComplete(computedSize);
+            }
             if (imageUrls.length > 0) {
                 // When the images are done loading inject the clone and
                 // measure it. Then render the modal with the correct
                 // width/height.
                 Asset.images(imageUrls, {
-                    onComplete: onComplete
+                    onComplete: onSizeComplete.pass([onComplete], this)
                 });
             } else {
-                onComplete();
+                onSizeComplete.apply(this, [onComplete]);
             }
         },
         attachEvents: function () {
@@ -187,15 +211,16 @@ Images
         },
         show: function () {
             /* Make the modal visible. */
-            var panelParentEl;
+            this.recomputePanelDimensions();
             this.showing = true;
             this.attachEvents();
             this.overlayEl.setStyles(Object.merge(
-                this.getOverlayCoords(), {
+                this.getOverlaySize(), {
                 display: 'block'
             }));
             this.panelEl.setStyles(Object.merge(
-                this.getPanelCoords(), {
+                this.getComputedPanelSize(),
+                this.getComputedPanelPosition(), {
                 display: 'block'
             }));
             this.fireEvent('panelShown');
@@ -229,69 +254,82 @@ Images
                 return this.options.panelHeight;
             }
         },
-        getPanelXOffset: function () {
-            /* Get the panel x offset from contentOptions and options. */
-            if (this.contentOptions !== null &&
-                    this.contentOptions.hasOwnProperty('panelXOffset')) {
-                return this.contentOptions.panelXOffset;
-            } else {
-                return this.options.panelXOffset;
-            }
-        },
-        getPanelYOffset: function () {
-            /* Get the panel y offset from contentOptions and options. */
-            if (this.contentOptions !== null &&
-                    this.contentOptions.hasOwnProperty('panelYOffset')) {
-                return this.contentOptions.panelYOffset;
-            } else {
-                return this.options.panelYOffset;
-            }
-        },
-        getOverlayCoords: function () {
-            /* Get the coordinates for the overlay element. */
-            var windowScrollSize, overlayCoords;
-            windowScrollSize = window.getScrollSize();
-            // Reposition and resize the overlay.
-            overlayCoords = {
-                top: 0 + 'px',
-                left: 0 + 'px',
+        getOverlaySize: function () {
+            /* Get the position for the overlay element. */
+            var windowScrollSize = window.getScrollSize();
+            return {
                 width: windowScrollSize.x + 'px',
                 height: windowScrollSize.y + 'px'
             };
-            return overlayCoords;
         },
-        getPanelCoords: function () {
-            /* Get the coordinates for the panel element. */
+        updateContentSize: function (onComplete) {
+            /* Update content size if necessary.
+
+            The argument onComplete will be called when the content size
+            has been updated. */
+            var contentCloneEl, onSizeComputed;
+            if (this.contentOptions.hasOwnProperty('autosize') &&
+               this.contentOptions.autosize) {
+                // TODO: We should clean this up.
+                contentCloneEl = this.panelEl.getChildren()[0].clone(true);
+                onSizeComputed = (function (computedSize) {
+                    this.contentOptions.width = computedSize.totalWidth;
+                    this.contentOptions.height = computedSize.totalHeight;
+                    onComplete();
+                }).bind(this);
+                this.measureContentComputedSize(contentCloneEl,
+                        onSizeComputed);
+            } else {
+                onComplete();
+            }
+        },
+        recomputePanelDimensions: function () {
+            /* Get the position and size for the panel element. */
             var windowSize, panelXMargin, panelYMargin, panelWidth,
-                    panelHeight, panelCoords, panelXOffset, panelYOffset,
-                    windowScroll;
-            windowScroll = window.getScroll();
+                    panelHeight, windowScroll;
             windowSize = window.getSize();
             panelWidth = this.getPanelWidth();
-            panelXOffset = this.getPanelXOffset();
-            if (windowSize.x >= panelWidth + (panelXOffset * 2)) {
-                panelXMargin = (windowSize.x - panelWidth) / 2 - panelXOffset;
+            if (windowSize.x >= panelWidth) {
+                panelXMargin = (windowSize.x - panelWidth) / 2;
             } else {
                 panelXMargin = 0;
-                panelWidth = windowSize.x - (panelXOffset * 2);
+                panelWidth = windowSize.x;
             }
             panelHeight = this.getPanelHeight();
-            panelYOffset = this.getPanelYOffset();
-            if (windowSize.y >= panelHeight + (panelYOffset * 2)) {
-                panelYMargin = (windowSize.y - panelHeight) / 2 - panelYOffset;
+            if (windowSize.y >= panelHeight) {
+                panelYMargin = (windowSize.y - panelHeight) / 2;
             } else {
                 panelYMargin = 0;
-                panelHeight = windowSize.y - (panelYOffset * 2);
+                panelHeight = windowSize.y;
             }
-            // The offsets are not included here because they lie
-            // between the margin and the height/width.
-            panelCoords = {
-                left: panelXMargin + windowScroll.x + 'px',
-                width: panelWidth + 'px',
-                top: panelYMargin + windowScroll.y + 'px',
-                height: panelHeight + 'px'
+            // Save these so they don't have to be recomputed.
+            this.computedPanelDimensions = {
+                xMargin: panelXMargin,
+                yMargin: panelYMargin,
+                width: panelWidth,
+                height: panelHeight
             };
-            return panelCoords;
+        },
+        getComputedPanelPosition: function () {
+            /* Get the position of where the panel *should* be.
+
+            Note that the panelXMargin/panelYMargin should only be
+            re-calculated when loading new content or on resize of the window.
+            */
+            var left, top, windowScroll;
+            windowScroll = window.getScroll();
+            left = this.computedPanelDimensions.xMargin + windowScroll.x;
+            top = this.computedPanelDimensions.yMargin + windowScroll.y;
+            return {
+                left: left + 'px',
+                top: top + 'px'
+            };
+        },
+        getComputedPanelSize: function () {
+            return {
+                width: this.computedPanelDimensions.width + 'px',
+                height: this.computedPanelDimensions.height + 'px'
+            };
         },
         panelParentKeydown: function (e) {
             /* Handles key events in the panel parent.
@@ -314,17 +352,29 @@ Images
         windowResize: function (e) {
             /* Handles window resize.
 
-            Positions and sizes the overlay and panel.
+            Re-positions and re-sizes the overlay and panel.
             */
+            var onComplete, panelStyles;
             if (this.showing) {
-                this.overlayEl.setStyles(this.getOverlayCoords());
-                this.panelEl.setStyles(this.getPanelCoords());
+                onComplete = (function () {
+                    this.recomputePanelDimensions();
+                    this.overlayEl.setStyles(this.getOverlaySize());
+                    panelStyles = Object.merge(this.getComputedPanelSize(),
+                            this.getComputedPanelPosition());
+                    this.panelEl.setStyles(panelStyles);
+                }).bind(this);
+                if (this.contentOptions.hasOwnProperty('autosize') &&
+                    this.contentOptions.autosize) {
+                    this.updateContentSize(onComplete);
+                } else {
+                    onComplete();
+                }
             }
         },
         windowScroll: function (e) {
             /* When the user scrolls up and down in the window.
 
-            Positions the overlay and panel.
+            Re-positions the overlay.
             */
             var targetEl;
             if (this.showing) {
@@ -337,8 +387,7 @@ Images
                     targetEl = $(e.target);
                 }
                 if (targetEl === null || !this.panelEl.contains(targetEl)) {
-                    this.overlayEl.setStyles(this.getOverlayCoords());
-                    this.panelEl.setStyles(this.getPanelCoords());
+                    this.panelEl.setStyles(this.getComputedPanelPosition());
                 }
             }
         }
