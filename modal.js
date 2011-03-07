@@ -280,17 +280,19 @@ Images
                 onSizeComputed = (function (computedSize) {
                     if (sizeOptions.hasOwnProperty('canShrink') &&
                             sizeOptions.canShrink) {
-                        this.contentOptions.width = computedSize.totalWidth;
-                        this.contentOptions.height = computedSize.totalHeight;
+                        this.contentOptions.panelWidth =
+                                computedSize.totalWidth;
+                        this.contentOptions.panelHeight =
+                                computedSize.totalHeight;
                     } else {
-                        if (this.contentOptions.width <
+                        if (this.contentOptions.panelWidth <
                                 computedSize.totalWidth) {
-                            this.contentOptions.width =
+                            this.contentOptions.panelWidth =
                                     computedSize.totalWidth;
                         }
-                        if (this.contentOptions.height <
+                        if (this.contentOptions.panelHeight <
                                 computedSize.totalHeight) {
-                            this.contentOptions.height =
+                            this.contentOptions.panelHeight =
                                     computedSize.totalHeight;
                         }
                     }
@@ -435,6 +437,10 @@ Images
                     onComplete();
                 }
             }
+        },
+        inPanel: function (el) {
+            /* Check if the given element is in the panel. */
+            return this.panelEl.contains(el);
         }
     });
 
