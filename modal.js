@@ -307,16 +307,16 @@ Images
         recomputePanelDimensions: function () {
             /* Get the position and size for the panel element. */
             var windowSize, panelXMargin, panelYMargin, panelWidth,
-                    panelHeight, windowScroll;
+                    panelHeight, windowScroll, actualHeight, actualWidth;
             windowSize = window.getSize();
-            panelWidth = this.getPanelWidth();
+            actualWidth = panelWidth = this.getPanelWidth();
             if (windowSize.x >= panelWidth) {
                 panelXMargin = (windowSize.x - panelWidth) / 2;
             } else {
                 panelXMargin = 0;
                 panelWidth = windowSize.x;
             }
-            panelHeight = this.getPanelHeight();
+            actualHeight = panelHeight = this.getPanelHeight();
             if (windowSize.y >= panelHeight) {
                 panelYMargin = (windowSize.y - panelHeight) / 2;
             } else {
@@ -328,7 +328,9 @@ Images
                 xMargin: panelXMargin,
                 yMargin: panelYMargin,
                 width: panelWidth,
-                height: panelHeight
+                height: panelHeight,
+                actualWidth: actualWidth,
+                actualHeight: actualHeight
             };
         },
         getComputedPanelPosition: function () {
