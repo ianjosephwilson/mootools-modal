@@ -339,14 +339,23 @@ Images
             Note that the panelXMargin/panelYMargin should only be
             re-calculated when loading new content or on resize of the window.
             */
-            var left, top, windowScroll;
+            var left, top, windowScroll, windowScrollSize, position;
             windowScroll = window.getScroll();
-            left = this.computedPanelDimensions.xMargin + windowScroll.x;
-            top = this.computedPanelDimensions.yMargin + windowScroll.y;
-            return {
-                left: left + 'px',
-                top: top + 'px'
-            };
+            windowScrollSize = window.getScrollSize();
+            position = {};
+            if (this.computedPanelDimensions.actualWidth +
+                    (this.computedPanelDimensions.xMargin * 2) +
+                    windowScroll.x < windowScrollSize.x) {
+                position.left = this.computedPanelDimensions.xMargin +
+                        windowScroll.x + 'px';
+            }
+            if (this.computedPanelDimensions.actualHeight +
+                    (this.computedPanelDimensions.yMargin * 2) +
+                    windowScroll.y < windowScrollSize.y) {
+                position.top = this.computedPanelDimensions.yMargin +
+                        windowScroll.y + 'px';
+            }
+            return position;
         },
         getComputedPanelSize: function () {
             return {
