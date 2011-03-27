@@ -225,7 +225,8 @@ Images
             }));
             this.panelEl.setStyles(Object.merge(
                 this.getComputedPanelSize(),
-                this.getComputedPanelPosition(), {
+                this.getComputedPanelPosition(), 
+                this.getOverflowStyles(), {
                 display: 'block'
             }));
             this.fireEvent('panelShown');
@@ -363,6 +364,23 @@ Images
                 height: this.computedPanelDimensions.height + 'px'
             };
         },
+        getOverflowStyles: function () {
+            /* Sets the overflow when the modal physically is larger than the
+                    window.
+            */
+            if (this.computedPanelDimensions.width <
+                    this.computedPanelDimensions.actualWidth ||
+                    this.computedPanelDimensions.height <
+                    this.computedPanelDimensions.actualHeight) {
+                return {
+                    overflow: 'scroll'
+                };
+            } else {
+                return {
+                    overflow: 'auto'
+                };
+            }
+        },
         panelParentKeydown: function (e) {
             /* Handles key events in the panel parent.
 
@@ -392,7 +410,8 @@ Images
                     this.recomputePanelDimensions();
                     this.overlayEl.setStyles(this.getOverlaySize());
                     panelStyles = Object.merge(this.getComputedPanelSize(),
-                            this.getComputedPanelPosition());
+                            this.getComputedPanelPosition(),
+                            this.getOverflowStyles());
                     this.panelEl.setStyles(panelStyles);
                 }).bind(this);
                 if (this.contentOptions.hasOwnProperty('autosize') &&
@@ -436,7 +455,8 @@ Images
                     this.recomputePanelDimensions();
                     this.overlayEl.setStyles(this.getOverlaySize());
                     panelStyles = Object.merge(this.getComputedPanelSize(),
-                            this.getComputedPanelPosition());
+                            this.getComputedPanelPosition(),
+                            this.getOverflowStyles());
                     this.panelEl.setStyles(panelStyles);
                 }).bind(this);
                 if (this.contentOptions.hasOwnProperty('autosize') &&
