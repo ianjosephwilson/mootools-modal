@@ -368,18 +368,16 @@ Images
             /* Sets the overflow when the modal physically is larger than the
                     window.
             */
+            var overflowStyles = {};
             if (this.computedPanelDimensions.width <
                     this.computedPanelDimensions.actualWidth ||
                     this.computedPanelDimensions.height <
                     this.computedPanelDimensions.actualHeight) {
-                return {
-                    overflow: 'scroll'
-                };
+                overflowStyles.overflow = 'scroll';
             } else {
-                return {
-                    overflow: 'auto'
-                };
+                overflowStyles.overflow = 'auto';
             }
+            return overflowStyles;
         },
         panelParentKeydown: function (e) {
             /* Handles key events in the panel parent.
