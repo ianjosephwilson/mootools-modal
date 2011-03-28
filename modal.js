@@ -31,7 +31,9 @@ Images
             panelWidth: 600,
             panelHeight: 600,
             panelBackgroundColor: '#ffffff',
-            panelCssClass: null
+            panelCssClass: null,
+            panelXMargin: 10,
+            panelYMargin: 10
         },
         initialize: function (options) {
             /* Initialize the modal's properties and options.
@@ -311,18 +313,30 @@ Images
                     panelHeight, windowScroll, actualHeight, actualWidth;
             windowSize = window.getSize();
             actualWidth = panelWidth = this.getPanelWidth();
-            if (windowSize.x >= panelWidth) {
+            if (windowSize.x >= (panelWidth + this.options.panelXMargin * 2)) {
                 panelXMargin = (windowSize.x - panelWidth) / 2;
             } else {
-                panelXMargin = 0;
-                panelWidth = windowSize.x;
+                if (windowSize.x <= this.options.panelXMargin * 2) {
+                    panelXMargin = 0;
+                    panelWidth = windowSize.x;
+                } else {
+                    panelXMargin = this.options.panelXMargin;
+                    panelWidth = windowSize.x - (this.options.panelXMargin * 2);
+                }
             }
             actualHeight = panelHeight = this.getPanelHeight();
-            if (windowSize.y >= panelHeight) {
+            if (windowSize.y >=
+                    (panelHeight + this.options.panelYMargin * 2)) {
                 panelYMargin = (windowSize.y - panelHeight) / 2;
             } else {
-                panelYMargin = 0;
-                panelHeight = windowSize.y;
+                if (windowSize.y <= this.options.panelYMargin * 2) {
+                    panelYMargin = 0;
+                    panelHeight = windowSize.y;
+                } else {
+                    panelYMargin = this.options.panelYMargin;
+                    panelHeight = windowSize.y -
+                            (this.options.panelYMargin * 2);
+                }
             }
             // Save these so they don't have to be recomputed.
             this.computedPanelDimensions = {
