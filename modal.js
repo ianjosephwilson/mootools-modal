@@ -154,10 +154,16 @@ Images
         measureContentComputedSize: function (contentEl, onComplete) {
             /* Measure computed size of contentEl and call onComplete with the
             size. */
-            var imageUrls;
-            imageUrls = contentEl.getElements('img').map(
+            var imagePairs, images, counter;
+            imagePairs = contentEl.getElements('img').map(
                 function (imageEl) {
-                    return imageEl.get('src');
+                    var pair = {
+                        el: imageEl,
+                        src: imageEl.get('src')
+                    };
+                    // Clear this so we can set it later to trigger onload.
+                    imageEl.set('src', '');
+                    return pair;
                 });
             function onSizeComplete(onComplete) {
                 /* Put the content in a table because it seems to be the only
@@ -189,13 +195,35 @@ Images
                 });
                 onComplete(computedSize);
             }
-            if (imageUrls.length > 0) {
-                // When the images are done loading inject the clone and
-                // measure it. Then render the modal with the correct
-                // width/height.
-                Asset.images(imageUrls, {
-                    onComplete: onSizeComplete.pass([onComplete], this)
-                });
+            if (imagePairs.length > 0) {
+                counter = 0;
+                Array.each(imagePairs, function (pair) {
+                    var events, self;
+                    self = this;
+                    events = {
+                        load: function () {
+                            counter = counter + 1;
+                            if (counter === imagePairs.length) {
+                                onSizeComplete.apply(self, [onComplete]);
+                            }
+                            pair.el.removeEvents(events);
+                        },
+                        error: function () {
+                            counter = counter + 1;
+                            if (counter === imagePairs.length) {
+                                onSizeComplete.apply(self, [onComplete]);
+                            }                            
+                            pair.el.removeEvents(events);
+                        }
+                    };
+                    pair.el.addEvents(events);
+                    pair.el.set('src', pair.src);
+                    // Check for cached images.
+                    if (pair.el.complete) {
+                        // Call asyncronously.
+                        events.load.delay(1);
+                    }
+                }, this);
             } else {
                 onSizeComplete.apply(this, [onComplete]);
             }
