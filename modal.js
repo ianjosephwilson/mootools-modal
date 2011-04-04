@@ -219,7 +219,8 @@ Images
                     pair.el.addEvents(events);
                     pair.el.set('src', pair.src);
                     // Check for cached images.
-                    if (pair.el.complete) {
+                    if (typeof pair.el.complete !== typeof undefined &&
+                            pair.el.complete) {
                         // Call asyncronously.
                         events.load.delay(1);
                     }
