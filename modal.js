@@ -389,13 +389,13 @@ Images
             position = {};
             if (this.computedPanelDimensions.actualWidth +
                     (this.computedPanelDimensions.xMargin * 2) +
-                    windowScroll.x < windowScrollSize.x) {
+                    windowScroll.x <= windowScrollSize.x) {
                 position.left = this.computedPanelDimensions.xMargin +
                         windowScroll.x + 'px';
             }
             if (this.computedPanelDimensions.actualHeight +
                     (this.computedPanelDimensions.yMargin * 2) +
-                    windowScroll.y < windowScrollSize.y) {
+                    windowScroll.y <= windowScrollSize.y) {
                 position.top = this.computedPanelDimensions.yMargin +
                         windowScroll.y + 'px';
             }
