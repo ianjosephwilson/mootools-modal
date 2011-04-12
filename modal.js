@@ -304,11 +304,13 @@ Images
 
             The argument onComplete will be called when the content size
             has been updated. */
-            var contentCloneEl, onSizeComputed;
+            var contentCloneEl, onSizeComputed, rootEl;
             if (this.contentOptions.hasOwnProperty('autosize') &&
                this.contentOptions.autosize) {
                 // TODO: We should clean this up.
-                contentCloneEl = this.panelEl.getChildren()[0].clone(true);
+                rootEl = this.panelEl.getChildren()[0];
+                // Do not use mootools clone because IE crashes.
+                contentCloneEl = $(rootEl.cloneNode(true));
                 onSizeComputed = (function (computedSize) {
                     if (sizeOptions.hasOwnProperty('canShrink') &&
                             sizeOptions.canShrink) {
